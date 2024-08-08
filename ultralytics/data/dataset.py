@@ -25,7 +25,7 @@ from .augment import (
     RandomLoadText,
     classify_augmentations,
     classify_transforms,
-    v8_transforms,
+    v8_transforms, ToGrayScale,
 )
 from .base import BaseDataset
 from .utils import (
@@ -180,6 +180,9 @@ class YOLODataset(BaseDataset):
             transforms = v8_transforms(self, self.imgsz, hyp)
         else:
             transforms = Compose([LetterBox(new_shape=(self.imgsz, self.imgsz), scaleup=False)])
+
+        transforms.append(ToGrayScale())
+
         transforms.append(
             Format(
                 bbox_format="xywh",
@@ -193,6 +196,7 @@ class YOLODataset(BaseDataset):
                 bgr=hyp.bgr if self.augment else 0.0,  # only affect training.
             )
         )
+
         return transforms
 
     def close_mosaic(self, hyp):

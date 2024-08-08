@@ -2086,7 +2086,7 @@ class Format:
             img = np.expand_dims(img, -1)
         img = img.transpose(2, 0, 1)
         img = np.ascontiguousarray(img[::-1] if random.uniform(0, 1) > self.bgr else img)
-        img = torch.from_numpy(img)
+        img = torch.from_numpy(img.copy())
         return img
 
     def _format_segments(self, instances, cls, w, h):
@@ -2567,6 +2567,13 @@ class ClassifyLetterBox:
         im_out = np.full((hs, ws, 3), 114, dtype=im.dtype)
         im_out[top : top + h, left : left + w] = cv2.resize(im, (w, h), interpolation=cv2.INTER_LINEAR)
         return im_out
+
+
+class ToGrayScale:
+    def __call__(self, data):
+        shape = data['img'].shape
+        data['img'] = cv2.cvtColor(data['img'], cv2.COLOR_BGR2GRAY).reshape(shape[0], shape[1], 1)
+        return data
 
 
 # NOTE: keep this class for backward compatibility
