@@ -279,6 +279,7 @@ class BaseModel(nn.Module):
         if getattr(self, "criterion", None) is None:
             self.criterion = self.init_criterion()
 
+        batch['img'] = batch['img'][:,:1,:,:]
         preds = self.forward(batch["img"]) if preds is None else preds
         return self.criterion(preds, batch)
 
@@ -876,6 +877,40 @@ def attempt_load_one_weight(weight, device=None, inplace=True, fuse=False):
     return model, ckpt
 
 
+CLASSES = {
+    Classify,
+    Conv,
+    ConvTranspose,
+    GhostConv,
+    Bottleneck,
+    GhostBottleneck,
+    SPP,
+    SPPF,
+    DWConv,
+    Focus,
+    BottleneckCSP,
+    C1,
+    C2,
+    C2f,
+    RepNCSPELAN4,
+    ELAN1,
+    ADown,
+    AConv,
+    SPPELAN,
+    C2fAttn,
+    C3,
+    C3TR,
+    C3Ghost,
+    nn.ConvTranspose2d,
+    DWConvTranspose2d,
+    C3x,
+    RepC3,
+    PSA,
+    SCDown,
+    C2fCIB
+}
+
+
 def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
     """Parse a YOLO model.yaml dictionary into a PyTorch model."""
     import ast
@@ -884,6 +919,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
     max_channels = float("inf")
     nc, act, scales = (d.get(x) for x in ("nc", "activation", "scales"))
     depth, width, kpt_shape = (d.get(x, 1.0) for x in ("depth_multiple", "width_multiple", "kpt_shape"))
+    
     if scales:
         scale = d.get("scale")
         if not scale:
@@ -898,6 +934,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
 
     if verbose:
         LOGGER.info(f"\n{'':>3}{'from':>20}{'n':>3}{'params':>10}  {'module':<45}{'arguments':<30}")
+    
     ch = [ch]
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
     for i, (f, n, m, args) in enumerate(d["backbone"] + d["head"]):  # from, number, module, args
@@ -908,38 +945,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
                     args[j] = locals()[a] if a in locals() else ast.literal_eval(a)
 
         n = n_ = max(round(n * depth), 1) if n > 1 else n  # depth gain
-        if m in {
-            Classify,
-            Conv,
-            ConvTranspose,
-            GhostConv,
-            Bottleneck,
-            GhostBottleneck,
-            SPP,
-            SPPF,
-            DWConv,
-            Focus,
-            BottleneckCSP,
-            C1,
-            C2,
-            C2f,
-            RepNCSPELAN4,
-            ELAN1,
-            ADown,
-            AConv,
-            SPPELAN,
-            C2fAttn,
-            C3,
-            C3TR,
-            C3Ghost,
-            nn.ConvTranspose2d,
-            DWConvTranspose2d,
-            C3x,
-            RepC3,
-            PSA,
-            SCDown,
-            C2fCIB,
-        }:
+        if m in CLASSES:
             c1, c2 = ch[f], args[0]
             if c2 != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
                 c2 = make_divisible(min(c2, max_channels) * width, 8)
